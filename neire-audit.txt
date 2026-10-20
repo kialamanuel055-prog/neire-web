@@ -1,0 +1,88 @@
+﻿=== 1. FICHEIROS DOS BLOCOS 3-6 ===
+Todos presentes.
+
+=== 2. FICHEIROS EXTRA (fora dos blocos) ===
+  + src/components/Avatar.vue
+  + src/components/CertificateCard.vue
+  + src/components/NeireLogo.vue
+  + src/components/NotificationBell.vue
+  + src/components/ThemeToggle.vue
+  + src/composables/useTheme.ts
+  + src/pages/admin/AdminArchivePage.vue
+  + src/pages/admin/AdminCertificatesPage.vue
+  + src/pages/admin/AdminChallengesPage.vue
+  + src/pages/admin/AdminComplaintsPage.vue
+  + src/pages/admin/AdminDebatesPage.vue
+  + src/pages/admin/AdminReportsPage.vue
+  + src/pages/company/CompanyChallengesPage.vue
+  + src/pages/public/VerifyCertificatePage.vue
+  + src/pages/shared/ComplaintsPage.vue
+  + src/pages/shared/NotificationsPage.vue
+  + src/pages/student/CertificatesPage.vue
+  + src/pages/student/ChallengeDetailPage.vue
+  + src/pages/student/ChallengesPage.vue
+  + src/pages/student/DebatesPage.vue
+  + src/pages/student/MentorshipPage.vue
+  + src/pages/student/MentorsPage.vue
+  + src/pages/student/NetworkingPage.vue
+  + src/stores/archive.ts
+  + src/stores/certificates.ts
+  + src/stores/challenges.ts
+  + src/stores/complaints.ts
+  + src/stores/debates.ts
+  + src/stores/mentorship.ts
+  + src/stores/notifications.ts
+
+=== 3. ANCORAS ===
+Todas as ancoras base presentes.
+Ancoras existentes no projeto:
+  src/main.ts:7  // ANCHOR:main-imports
+  src/main.ts:13  // ANCHOR:main-plugins
+  src/style.css:207  /* ANCHOR:css-extra */
+  src/config/labels.ts:177  // ANCHOR:labels
+  src/config/navigation.ts:23  // ANCHOR:nav-imports
+  src/config/navigation.ts:53  // ANCHOR:nav-student
+  src/config/navigation.ts:68  // ANCHOR:nav-alumni
+  src/config/navigation.ts:78  // ANCHOR:nav-company
+  src/config/navigation.ts:93  // ANCHOR:nav-admin
+  src/layouts/DashboardLayout.vue:90  <!-- ANCHOR:dashboard-header-tools -->
+  src/layouts/PublicLayout.vue:22  <!-- ANCHOR:public-nav -->
+  src/pages/admin/AdminDashboard.vue:44  <!-- ANCHOR:admin-dashboard-sections -->
+  src/pages/company/CompanyDashboard.vue:47  <!-- ANCHOR:company-dashboard-sections -->
+  src/pages/public/HomePage.vue:84  <!-- ANCHOR:home-hero-art -->
+  src/pages/public/HomePage.vue:133  <!-- ANCHOR:home-sections -->
+  src/pages/public/LoginPage.vue:86  <!-- ANCHOR:login-hero-art -->
+  src/pages/student/StudentDashboard.vue:127  <!-- ANCHOR:student-dashboard-sections -->
+  src/router/index.ts:18  // ANCHOR:routes-public
+  src/router/index.ts:42  // ANCHOR:routes-student
+  src/router/index.ts:57  // ANCHOR:routes-company
+  src/router/index.ts:78  // ANCHOR:routes-admin
+  src/stores/auth.ts:47  // ANCHOR:auth-actions
+  src/types/index.ts:235  // ANCHOR:types
+
+=== 4. ROTAS E MENUS ===
+Rotas declaradas: 40
+
+=== 5. COBERTURA DO DOCUMENTO ===
+  [falta]  Registo / cadastro
+  [falta]  Perfil da empresa
+  [feito?] Notificacoes: src/components/NotificationBell.vue, src/pages/shared/NotificationsPage.vue, src/stores/notifications.ts
+  [feito?] Certificados (QR): src/components/CertificateCard.vue, src/pages/admin/AdminCertificatesPage.vue, src/pages/public/VerifyCertificatePage.vue, src/pages/student/CertificatesPage.vue, src/stores/certificates.ts
+  [feito?] Mentoria: src/pages/student/MentorshipPage.vue, src/pages/student/MentorsPage.vue, src/stores/mentorship.ts
+  [falta]  Alumni (area propria)
+  [feito?] Networking: src/pages/student/NetworkingPage.vue
+  [feito?] Desafios empresariais: src/pages/admin/AdminChallengesPage.vue, src/pages/company/CompanyChallengesPage.vue, src/pages/student/ChallengeDetailPage.vue, src/pages/student/ChallengesPage.vue, src/stores/challenges.ts
+  [feito?] Concurso de debates: src/pages/admin/AdminDebatesPage.vue, src/pages/student/DebatesPage.vue, src/stores/debates.ts
+  [falta]  Academia / Formacao
+  [falta]  Noticias
+  [falta]  Historias de impacto
+  [falta]  Feedback
+  [feito?] Denuncias / reclamacoes: src/pages/admin/AdminComplaintsPage.vue, src/pages/shared/ComplaintsPage.vue, src/stores/complaints.ts
+  [feito?] Arquivo institucional: src/pages/admin/AdminArchivePage.vue, src/stores/archive.ts
+  [feito?] Relatorios: src/pages/admin/AdminReportsPage.vue
+  [falta]  Permissoes por departamento
+  [falta]  Verificacao de competencias
+
+=== 6. TYPE-CHECK E BUILD ===
+Erros encontrados: 1
+      + FullyQualifiedErrorId : NativeCommandError

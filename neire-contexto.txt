@@ -1,0 +1,222 @@
+﻿##### src/stores/certificates.ts
+import { defineStore } from 'pinia'
+import { usePersistedRef } from '@/composables/usePersistedRef'
+import { useAuditStore } from '@/stores/audit'
+import { useNotificationsStore } from '@/stores/notifications'
+import { uid } from '@/utils/format'
+import type { Certificate } from '@/types'
+
+function makeCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let s = ''
+  for (let i = 0; i < 8; i++) s += chars.charAt(Math.floor(Math.random() * chars.length))
+  return `NEIRE-${s.slice(0, 4)}-${s.slice(4)}`
+}
+
+export const useCertificatesStore = defineStore('certificates', () => {
+  const items = usePersistedRef<Certificate[]>('neire.v1.certificates', () => [])
+  const audit = useAuditStore()
+  const notifications = useNotificationsStore()
+
+  function byStudent(studentId: string) {
+    return items.value.filter((c) => c.studentId === studentId)
+  }
+
+  function byCode(code: string) {
+    const needle = code.trim().toUpperCase()
+    return needle ? items.value.find((c) => c.code === needle) : undefined
+  }
+
+  function issue(student: { id: string; name: string }, activity: string) {
+    const cert: Certificate = {
+      id: uid('c'),
+      code: makeCode(),
+      studentId: student.id,
+      studentName: student.name,
+      activity,
+      issuer: 'NEIRE · INSTIC',
+      issuedAt: new Date().toISOString(),
+    }
+    items.value.unshift(cert)
+    audit.log('Certificado emitido', `${student.name} · ${activity} · ${cert.code}`)
+    notifications.notify(student.id, 'Novo certificado', `Recebeste um certificado: ${activity}`, '/app/estudante/certificados')
+    return cert
+  }
+
+  return { items, byStudent, byCode, issue }
+})
+
+##### src/stores/notifications.ts
+import { defineStore } from 'pinia'
+import { usePersistedRef } from '@/composables/usePersistedRef'
+import { uid } from '@/utils/format'
+import type { AppNotification } from '@/types'
+
+export const useNotificationsStore = defineStore('notifications', () => {
+  const items = usePersistedRef<AppNotification[]>('neire.v1.notifications', () => {
+    const now = new Date().toISOString()
+    return [
+      { id: 'n1', userId: 'u1', title: 'Bem-vindo ao NEIRE', text: 'Completa o teu perfil para receberes melhores oportunidades.', link: '/app/estudante/perfil', read: false, at: now },
+      { id: 'n2', userId: 'u3', title: 'Bem-vindo ao NEIRE', text: 'Publica a tua primeira oportunidade para os estudantes do INSTIC.', link: '/app/empresa/oportunidades/nova', read: false, at: now },
+    ]
+  })
+
+  function notify(userId: string, title: string, text: string, link?: string) {
+    items.value.unshift({ id: uid('n'), userId, title, text, link, read: false, at: new Date().toISOString() })
+  }
+
+  function forUser(userId: string) {
+    return items.value.filter((n) => n.userId === userId)
+  }
+
+  function markRead(id: string) {
+    const n = items.value.find((x) => x.id === id)
+    if (n) n.read = true
+  }
+
+  function markAllRead(userId: string) {
+    items.value.forEach((n) => {
+      if (n.userId === userId) n.read = true
+    })
+  }
+
+  return { items, notify, forUser, markRead, markAllRead }
+})
+
+##### src/stores/applications.ts
+import { defineStore } from 'pinia'
+import { usePersistedRef } from '@/composables/usePersistedRef'
+import { seedApplications } from '@/mocks/seed'
+import { applicationStatusLabels } from '@/config/labels'
+import { useAuditStore } from '@/stores/audit'
+import { useNotificationsStore } from '@/stores/notifications'
+import { useOpportunitiesStore } from '@/stores/opportunities'
+import { uid } from '@/utils/format'
+import type { Application, ApplicationStatus } from '@/types'
+
+export const useApplicationsStore = defineStore('applications', () => {
+  const items = usePersistedRef<Application[]>('neire.v1.applications', () => structuredClone(seedApplications))
+  const audit = useAuditStore()
+  const notifications = useNotificationsStore()
+  const opps = useOpportunitiesStore()
+
+  function forStudent(studentId: string) {
+    return items.value.filter((a) => a.studentId === studentId)
+  }
+
+  function forOpportunity(opportunityId: string) {
+    return items.value.filter((a) => a.opportunityId === opportunityId)
+  }
+
+  function find(opportunityId: string, studentId: string) {
+    return items.value.find((a) => a.opportunityId === opportunityId && a.studentId === studentId)
+  }
+
+  function apply(opportunityId: string, student: { id: string; name: string }, message: string) {
+    if (find(opportunityId, student.id)) return null
+    const now = new Date().toISOString()
+    const app: Application = {
+      id: uid('a'),
+      opportunityId,
+      studentId: student.id,
+      studentName: student.name,
+      status: 'enviada',
+      message,
+      createdAt: now,
+      history: [{ status: 'enviada', at: now }],
+    }
+    items.value.unshift(app)
+    const opp = opps.byId(opportunityId)
+    if (opp) {
+      notifications.notify(opp.companyId, 'Nova candidatura', `${student.name} candidatou-se a "${opp.title}".`, '/app/empresa/candidaturas')
+    }
+    return app
+  }
+
+  function setStatus(id: string, status: ApplicationStatus) {
+    const app = items.value.find((a) => a.id === id)
+    if (!app || app.status === status) return
+    app.status = status
+    app.history.push({ status, at: new Date().toISOString() })
+    audit.log('Estado de candidatura alterado', `${app.studentName} → ${applicationStatusLabels[status]}`)
+    const title = opps.byId(app.opportunityId)?.title ?? 'a oportunidade'
+    notifications.notify(app.studentId, 'Candidatura atualizada', `${title}: ${applicationStatusLabels[status]}`, '/app/estudante/candidaturas')
+  }
+
+  return { items, forStudent, forOpportunity, find, apply, setStatus }
+})
+
+##### src/stores/opportunities.ts
+import { computed } from 'vue'
+import { defineStore } from 'pinia'
+import { usePersistedRef } from '@/composables/usePersistedRef'
+import { seedOpportunities } from '@/mocks/seed'
+import { opportunityStatusLabels } from '@/config/labels'
+import { useAuditStore } from '@/stores/audit'
+import { useNotificationsStore } from '@/stores/notifications'
+import { useProfilesStore } from '@/stores/profiles'
+import { uid } from '@/utils/format'
+import type { Opportunity, OpportunityStatus } from '@/types'
+
+export const useOpportunitiesStore = defineStore('opportunities', () => {
+  const items = usePersistedRef<Opportunity[]>('neire.v1.opportunities', () => structuredClone(seedOpportunities))
+  const audit = useAuditStore()
+  const notifications = useNotificationsStore()
+  const profiles = useProfilesStore()
+
+  const published = computed(() => items.value.filter((o) => o.status === 'publicada'))
+  const pending = computed(() => items.value.filter((o) => o.status === 'pendente'))
+
+  function byId(id: string) {
+    return items.value.find((o) => o.id === id)
+  }
+
+  function byCompany(companyId: string) {
+    return items.value.filter((o) => o.companyId === companyId)
+  }
+
+  function create(data: Omit<Opportunity, 'id' | 'status' | 'createdAt'>) {
+    const opp: Opportunity = { ...data, id: uid('o'), status: 'pendente', createdAt: new Date().toISOString() }
+    items.value.unshift(opp)
+    audit.log('Oportunidade submetida', `${opp.title} (${opp.companyName})`)
+    return opp
+  }
+
+  function setStatus(id: string, status: OpportunityStatus) {
+    const opp = byId(id)
+    if (!opp || opp.status === status) return
+    opp.status = status
+    audit.log(`Oportunidade: ${opportunityStatusLabels[status]}`, opp.title)
+
+    if (status === 'publicada') {
+      notifications.notify(opp.companyId, 'Oportunidade aprovada', `"${opp.title}" já está visível aos estudantes.`, '/app/empresa/oportunidades')
+      for (const p of profiles.items) {
+        notifications.notify(p.userId, 'Nova oportunidade', `${opp.title} · ${opp.companyName}`, `/app/estudante/oportunidades/${opp.id}`)
+      }
+    } else if (status === 'rejeitada') {
+      notifications.notify(opp.companyId, 'Oportunidade rejeitada', `"${opp.title}" não foi aprovada pelo NEIRE.`, '/app/empresa/oportunidades')
+    }
+  }
+
+  return { items, published, pending, byId, byCompany, create, setStatus }
+})
+
+##### TIPOS (Notification / Certificate)
+export interface AppNotification {
+  id: string
+  userId: string
+  title: string
+  text: string
+  link?: string
+  read: boolean
+  at: string
+}
+export interface Certificate {
+  id: string
+  code: string
+  studentId: string
+  studentName: string
+  activity: string
+  issuer: string
+  issuedAt: string
+}
