@@ -801,18 +801,18 @@ export function installApiSync() {
   })
   // b25c-D-profile
   // Perfil da empresa: carrega do servidor e so depois comeca a enviar alteracoes.
-  let profileLoaded = false
+  let companyProfileLoaded = false
   let profileTimer: ReturnType<typeof setTimeout> | undefined
   vueWatch(
     () => auth.user?.id,
     async (id) => {
-      profileLoaded = false
+      companyProfileLoaded = false
       if (!id || auth.user?.role !== 'company') return
       try {
         const d = await api<CompanyProfile>('/companies/me')
         if (auth.user?.id !== id) return
         companyProfilesStore.items = [d]
-        profileLoaded = true
+        companyProfileLoaded = true
       } catch {
         /* sem ligacao: nao envia nada para nao apagar dados */
       }
@@ -822,7 +822,7 @@ export function installApiSync() {
   vueWatch(
     () => JSON.stringify(companyProfilesStore.items),
     () => {
-      if (!profileLoaded || auth.user?.role !== 'company') return
+      if (!companyProfileLoaded || auth.user?.role !== 'company') return
       clearTimeout(profileTimer)
       profileTimer = setTimeout(() => {
         const p = companyProfilesStore.items.find((x) => x.companyId === auth.user?.id)

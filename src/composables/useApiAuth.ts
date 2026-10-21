@@ -2,6 +2,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useProfilesStore } from '@/stores/profiles'
 import { useCompaniesStore } from '@/stores/companies'
 import { startSession } from '@/composables/useSession'
+import { notifyUnauthorized } from '@/composables/sessionEvents'
 import { api, ApiError, apiEnabled, getToken, setToken } from '@/api/client'
 import type { User } from '@/types'
 
@@ -68,10 +69,7 @@ export async function restoreSession(): Promise<void> {
     if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
       setToken(null)
       auth.logout()
-      const { default: router } = await import('@/router')
-      if (router.currentRoute.value.matched.some((r) => r.meta.requiresAuth)) {
-        await router.replace({ name: 'login' })
-      }
+      notifyUnauthorized()
     }
     // erros de rede: mantem a sessao local e tenta de novo mais tarde
   }
