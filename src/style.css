@@ -257,4 +257,44 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
 }
+/* b-tipografia */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    font-size: 14.5px;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    letter-spacing: -0.003em;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.015em;
+  }
+  input, select, textarea, button {
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+  select {
+    cursor: pointer;
+  }
+  select option {
+    font-size: 0.875rem;
+    font-weight: 400;
+    padding: 0.4rem 0.6rem;
+    color: #0f172a;
+    background: #ffffff;
+  }
+  th {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
 /* ANCHOR:css-extra */
