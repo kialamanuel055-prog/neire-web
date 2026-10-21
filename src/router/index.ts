@@ -14,7 +14,7 @@ declare module 'vue-router' {
 const publicRoutes: RouteRecordRaw[] = [
   { path: '', name: 'home', component: () => import('@/pages/public/HomePage.vue'), meta: { title: 'Início' } },
   { path: 'entrar', name: 'login', component: () => (import.meta.env.VITE_API_URL ? import('@/pages/public/SignInPage.vue') : import('@/pages/public/LoginPage.vue')), meta: { title: 'Entrar' } },
-  { path: 'verificar/:code?', name: 'verify-certificate', component: () => import('@/pages/public/VerifyCertificatePage.vue'), meta: { title: 'Verificar certificado' } },
+  { path: 'verificar/:code?', name: 'verify-certificate', component: () => (import.meta.env.VITE_API_URL ? import('@/pages/public/VerifyCertificateApiPage.vue') : import('@/pages/public/VerifyCertificatePage.vue')), meta: { title: 'Verificar certificado' } },
   { path: 'registo', name: 'register', component: () => (import.meta.env.VITE_API_URL ? import('@/pages/public/RegisterApiPage.vue') : import('@/pages/public/RegisterPage.vue')), meta: { title: 'Criar conta' } },
   { path: 'noticias', name: 'news', component: () => import('@/pages/public/NewsPage.vue'), meta: { title: 'Notícias' } },
   // ANCHOR:routes-public

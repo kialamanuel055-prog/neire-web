@@ -22,6 +22,7 @@ export interface CertificateInput {
 
 export function issueCertificate(input: CertificateInput): void {
   // ANCHOR:adapter-certificate:start
+  if (apiEnabled) return // em modo API o servidor emite o certificado
   useCertificatesStore().issue({ id: input.userId, name: input.userName }, input.title)
   // ANCHOR:adapter-certificate:end
 }

@@ -10,6 +10,10 @@ import { useAuditStore } from '@/stores/audit'
 import { useProfilesStore } from '@/stores/profiles'
 import { useSkillRequestsStore } from '@/stores/skillrequests'
 import { useAlumniStore } from '@/stores/alumni'
+import { useEventsStore } from '@/stores/events'
+import { useAcademyStore } from '@/stores/academy'
+import { useCertificatesStore } from '@/stores/certificates'
+import type { Certificate, Course, EventItem } from '@/types'
 // ANCHOR:sync-imports
 import type {
   AppNotification,
@@ -92,6 +96,9 @@ function clearApiData() {
   useProfilesStore().items = []
   useSkillRequestsStore().items = []
   useAlumniStore().items = []
+  useEventsStore().items = []
+  useAcademyStore().items = []
+  useCertificatesStore().items = []
   // ANCHOR:sync-clear
 }
 
@@ -110,6 +117,9 @@ async function doPull() {
   const profiles = useProfilesStore()
   const skillReq = useSkillRequestsStore()
   const alumni = useAlumniStore()
+  const events = useEventsStore()
+  const academy = useAcademyStore()
+  const certs = useCertificatesStore()
   // ANCHOR:sync-pull-stores
 
   const tasks: Promise<unknown>[] = [
@@ -160,6 +170,21 @@ async function doPull() {
       }),
       api<SkillRequest[]>('/skill-requests').then((d) => {
         if (still()) skillReq.items = d
+      }),
+    )
+  }
+  tasks.push(
+    api<EventItem[]>('/events').then((d) => {
+      if (still()) events.items = d
+    }),
+    api<Course[]>('/courses').then((d) => {
+      if (still()) academy.items = d
+    }),
+  )
+  if (user.role !== 'company') {
+    tasks.push(
+      api<Certificate[]>('/certificates').then((d) => {
+        if (still()) certs.items = d
       }),
     )
   }
@@ -218,6 +243,9 @@ export function installApiSync() {
   const profiles = useProfilesStore()
   const skillReq = useSkillRequestsStore()
   const alumni = useAlumniStore()
+  const events = useEventsStore()
+  const academy = useAcademyStore()
+  const certs = useCertificatesStore()
   // ANCHOR:sync-hooks-stores
 
   // ----- guardar automaticamente: perfil -----
@@ -418,6 +446,77 @@ export function installApiSync() {
     if (name === 'decide') {
       const [id, approved, level] = args as unknown as [string, boolean, SkillLevel]
       void push(() => api(`/skill-requests/${id}/decide`, { method: 'PATCH', body: { approved, level } }))
+    }
+  })
+  // ----- eventos -----
+  events.$onAction(({ name, args, after }) => {
+    if (name === 'create') {
+      const d = args[0] as unknown as Omit<EventItem, 'id' | 'registered'>
+      void push(() =>
+        api('/events', {
+          method: 'POST',
+          body: {
+            title: d.title,
+            type: d.type,
+            description: d.description,
+            date: d.date,
+            time: d.time,
+            location: d.location,
+            capacity: d.capacity,
+          },
+        }),
+      )
+    }
+    if (name === 'toggle') {
+      const [eventId] = args as unknown as [string, string]
+      after((result) => {
+        if (result !== 'inscrito' && result !== 'cancelado') return
+        void push(() =>
+          api(`/events/${eventId}/registration`, { method: 'PUT', body: { registered: result === 'inscrito' } }),
+        )
+      })
+    }
+  })
+
+  // ----- academia -----
+  academy.$onAction(({ name, args, after }) => {
+    if (name === 'create') {
+      const d = args[0] as unknown as Omit<Course, 'id' | 'enrolled' | 'completed'>
+      void push(() =>
+        api('/courses', {
+          method: 'POST',
+          body: {
+            title: d.title,
+            kind: d.kind,
+            description: d.description,
+            instructor: d.instructor,
+            startDate: d.startDate,
+            hours: d.hours,
+            capacity: d.capacity,
+          },
+        }),
+      )
+    }
+    if (name === 'toggleEnroll') {
+      const [courseId] = args as unknown as [string, string]
+      after((result) => {
+        if (result !== 'inscrito' && result !== 'cancelado') return
+        void push(() =>
+          api(`/courses/${courseId}/enrollment`, { method: 'PUT', body: { enrolled: result === 'inscrito' } }),
+        )
+      })
+    }
+    if (name === 'complete') {
+      const [courseId, userId] = args as unknown as [string, string]
+      void push(() => api(`/courses/${courseId}/complete`, { method: 'POST', body: { userId } }))
+    }
+  })
+
+  // ----- certificados emitidos manualmente pelo admin -----
+  certs.$onAction(({ name, args }) => {
+    if (name === 'issue') {
+      const [student, activity] = args as unknown as [{ id: string; name: string }, string]
+      void push(() => api('/certificates', { method: 'POST', body: { studentId: student.id, activity } }))
     }
   })
   // ANCHOR:sync-hooks
