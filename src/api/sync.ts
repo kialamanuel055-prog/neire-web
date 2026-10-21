@@ -18,6 +18,11 @@ import type { Certificate, Course, EventItem } from '@/types'
 import { useContentStore } from '@/stores/content'
 import { useFeedbackStore } from '@/stores/feedback'
 import type { FeedbackEntry, ImpactStory, NewsItem } from '@/types'
+// b25a-imports
+import { useMentorshipStore } from '@/stores/mentorship'
+import { useComplaintsStore } from '@/stores/complaints'
+import { useArchiveStore } from '@/stores/archive'
+import type { ArchiveDoc, Complaint, ComplaintStatus, Mentor, MentorshipRequest } from '@/types'
 // ANCHOR:sync-imports
 import type {
   AppNotification,
@@ -105,6 +110,11 @@ function clearApiData() {
   useCertificatesStore().items = []
   // b24-clear
   useFeedbackStore().items = []
+  // b25a-clear
+  useMentorshipStore().mentors = []
+  useMentorshipStore().requests = []
+  useComplaintsStore().items = []
+  useArchiveStore().items = []
   // ANCHOR:sync-clear
 }
 
@@ -129,6 +139,10 @@ async function doPull() {
   // b24-pull-stores
   const content = useContentStore()
   const feedback = useFeedbackStore()
+  // b25a-pull-stores
+  const mentorship = useMentorshipStore()
+  const complaints = useComplaintsStore()
+  const archive = useArchiveStore()
   // ANCHOR:sync-pull-stores
 
   const tasks: Promise<unknown>[] = [
@@ -197,6 +211,29 @@ async function doPull() {
       }),
     )
   }
+  // b25a-pull-data
+  tasks.push(
+    api<Mentor[]>('/mentors').then((d) => {
+      if (still()) mentorship.mentors = d
+    }),
+    api<Complaint[]>('/complaints').then((d) => {
+      if (still()) complaints.items = d
+    }),
+  )
+  if (user.role !== 'company') {
+    tasks.push(
+      api<MentorshipRequest[]>('/mentorship-requests').then((d) => {
+        if (still()) mentorship.requests = d
+      }),
+    )
+  }
+  if (user.role === 'admin') {
+    tasks.push(
+      api<ArchiveDoc[]>('/archive').then((d) => {
+        if (still()) archive.items = d
+      }),
+    )
+  }
   // ANCHOR:sync-pull
 
   const results = await Promise.allSettled(tasks)
@@ -258,6 +295,10 @@ export function installApiSync() {
   // b24-hooks-stores
   const content = useContentStore()
   const feedback = useFeedbackStore()
+  // b25a-hooks-stores
+  const mentorship = useMentorshipStore()
+  const complaints = useComplaintsStore()
+  const archive = useArchiveStore()
   // ANCHOR:sync-hooks-stores
 
   // ----- guardar automaticamente: perfil -----
@@ -529,6 +570,70 @@ export function installApiSync() {
     if (name === 'issue') {
       const [student, activity] = args as unknown as [{ id: string; name: string }, string]
       void push(() => api('/certificates', { method: 'POST', body: { studentId: student.id, activity } }))
+    }
+  })
+  // b25a-hooks-actions
+  // ----- mentoria -----
+  mentorship.$onAction(({ name, args, after }) => {
+    if (name === 'becomeMentor') {
+      const [, area, company, bio] = args as unknown as [unknown, string, string, string]
+      void push(() => api('/mentors/me', { method: 'POST', body: { area, company, bio } }))
+    }
+    if (name === 'toggleActive') {
+      const [userId] = args as unknown as [string]
+      after(() => {
+        if (!auth.user || auth.user.id !== userId) return
+        const m = mentorship.mentors.find((x) => x.userId === userId)
+        if (m) void push(() => api('/mentors/me/active', { method: 'PATCH', body: { active: m.active } }))
+      })
+    }
+    if (name === 'request') {
+      const [, mentorId, topic, message] = args as unknown as [unknown, string, string, string]
+      after((result) => {
+        if (!result) return
+        void push(() => api('/mentorship-requests', { method: 'POST', body: { mentorId, topic, message } }))
+      })
+    }
+    if (name === 'respond') {
+      const [id, status] = args as unknown as [string, 'aceite' | 'recusada']
+      void push(() => api(`/mentorship-requests/${id}/respond`, { method: 'PATCH', body: { status } }))
+    }
+  })
+
+  // ----- denuncias (as anonimas nao levam identificacao) -----
+  complaints.$onAction(({ name, args, after }) => {
+    if (name === 'submit') {
+      const d = args[0] as unknown as { category: string; description: string; author?: { id: string; name: string } }
+      after((result) => {
+        if (!result) return
+        void push(() =>
+          api('/complaints', {
+            method: 'POST',
+            body: { category: d.category, description: d.description, anonymous: !d.author },
+          }),
+        )
+      })
+    }
+    if (name === 'setStatus') {
+      const [id, status, response] = args as unknown as [string, ComplaintStatus, string]
+      void push(() => api(`/complaints/${id}/status`, { method: 'PATCH', body: { status, response } }))
+    }
+  })
+
+  // ----- arquivo institucional (admin) -----
+  archive.$onAction(({ name, args }) => {
+    if (name === 'add') {
+      const d = args[0] as unknown as { title: string; category: string; description: string; link: string }
+      void push(() =>
+        api('/archive', {
+          method: 'POST',
+          body: { title: d.title, category: d.category, description: d.description, link: d.link },
+        }),
+      )
+    }
+    if (name === 'remove') {
+      const [id] = args as unknown as [string]
+      void pushQuiet(() => api(`/archive/${id}`, { method: 'DELETE' }))
     }
   })
   // ANCHOR:sync-hooks
