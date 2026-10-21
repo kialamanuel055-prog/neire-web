@@ -23,6 +23,10 @@ import { useMentorshipStore } from '@/stores/mentorship'
 import { useComplaintsStore } from '@/stores/complaints'
 import { useArchiveStore } from '@/stores/archive'
 import type { ArchiveDoc, Complaint, ComplaintStatus, Mentor, MentorshipRequest } from '@/types'
+// b25b-A-imports
+import { useChallengesStore } from '@/stores/challenges'
+import { useDebatesStore } from '@/stores/debates'
+import type { Challenge, ChallengeSubmission, ChallengeTeam, DebateContest, DebateMatch, DebateTeam } from '@/types'
 // ANCHOR:sync-imports
 import type {
   AppNotification,
@@ -115,6 +119,13 @@ function clearApiData() {
   useMentorshipStore().requests = []
   useComplaintsStore().items = []
   useArchiveStore().items = []
+  // b25b-B-clear
+  useChallengesStore().items = []
+  useChallengesStore().teams = []
+  useChallengesStore().submissions = []
+  useDebatesStore().contests = []
+  useDebatesStore().teams = []
+  useDebatesStore().matches = []
   // ANCHOR:sync-clear
 }
 
@@ -143,6 +154,9 @@ async function doPull() {
   const mentorship = useMentorshipStore()
   const complaints = useComplaintsStore()
   const archive = useArchiveStore()
+  // b25b-C-stores-pull
+  const challengesStore = useChallengesStore()
+  const debatesStore = useDebatesStore()
   // ANCHOR:sync-pull-stores
 
   const tasks: Promise<unknown>[] = [
@@ -234,6 +248,27 @@ async function doPull() {
       }),
     )
   }
+  // b25b-D-pulldata
+  tasks.push(
+    api<Challenge[]>('/challenges').then((d) => {
+      if (still()) challengesStore.items = d
+    }),
+    api<ChallengeTeam[]>('/challenge-teams').then((d) => {
+      if (still()) challengesStore.teams = d
+    }),
+    api<ChallengeSubmission[]>('/challenge-submissions').then((d) => {
+      if (still()) challengesStore.submissions = d
+    }),
+    api<DebateContest[]>('/debates').then((d) => {
+      if (still()) debatesStore.contests = d
+    }),
+    api<DebateTeam[]>('/debate-teams').then((d) => {
+      if (still()) debatesStore.teams = d
+    }),
+    api<DebateMatch[]>('/debate-matches').then((d) => {
+      if (still()) debatesStore.matches = d
+    }),
+  )
   // ANCHOR:sync-pull
 
   const results = await Promise.allSettled(tasks)
@@ -299,6 +334,9 @@ export function installApiSync() {
   const mentorship = useMentorshipStore()
   const complaints = useComplaintsStore()
   const archive = useArchiveStore()
+  // b25b-E-stores-hooks
+  const challengesStore = useChallengesStore()
+  const debatesStore = useDebatesStore()
   // ANCHOR:sync-hooks-stores
 
   // ----- guardar automaticamente: perfil -----
@@ -634,6 +672,123 @@ export function installApiSync() {
     if (name === 'remove') {
       const [id] = args as unknown as [string]
       void pushQuiet(() => api(`/archive/${id}`, { method: 'DELETE' }))
+    }
+  })
+  // b25b-F-hookactions
+  // ----- desafios empresariais -----
+  challengesStore.$onAction(({ name, args, after }) => {
+    if (name === 'create') {
+      const d = args[0] as unknown as {
+        title: string
+        problem: string
+        requirements: string[]
+        skills: string[]
+        deadline: string
+        prize: string
+      }
+      void push(() =>
+        api('/challenges', {
+          method: 'POST',
+          body: {
+            title: d.title,
+            problem: d.problem,
+            requirements: d.requirements,
+            skills: d.skills,
+            deadline: d.deadline,
+            prize: d.prize,
+          },
+        }),
+      )
+    }
+    if (name === 'setStatus') {
+      const [id, status] = args as unknown as [string, 'ativo' | 'rejeitado']
+      void push(() => api(`/challenges/${id}/status`, { method: 'PATCH', body: { status } }))
+    }
+    if (name === 'createTeam') {
+      const [challengeId, , teamName] = args as unknown as [string, unknown, string]
+      after((result) => {
+        if (!result) return
+        void push(() => api('/challenge-teams', { method: 'POST', body: { challengeId, name: teamName } }))
+      })
+    }
+    if (name === 'joinTeam') {
+      const [teamId] = args as unknown as [string]
+      after((result) => {
+        if (!result) return
+        void push(() => api(`/challenge-teams/${teamId}/join`, { method: 'POST' }))
+      })
+    }
+    if (name === 'leaveTeam') {
+      const [teamId, userId] = args as unknown as [string, string]
+      if (auth.user?.id !== userId) return
+      void push(() => api(`/challenge-teams/${teamId}/leave`, { method: 'POST' }))
+    }
+    if (name === 'submit') {
+      const [teamId, , summary, link] = args as unknown as [string, unknown, string, string]
+      after((result) => {
+        if (!result) return
+        void push(() => api(`/challenge-teams/${teamId}/submission`, { method: 'PUT', body: { summary, link } }))
+      })
+    }
+    if (name === 'score') {
+      const [submissionId, value, feedback] = args as unknown as [string, number, string]
+      void push(() =>
+        api(`/challenge-submissions/${submissionId}/score`, { method: 'PATCH', body: { score: value, feedback } }),
+      )
+    }
+    if (name === 'declareWinner') {
+      const [challengeId] = args as unknown as [string]
+      after((result) => {
+        if (!result) return
+        void push(() => api(`/challenges/${challengeId}/winner`, { method: 'POST' }))
+      })
+    }
+  })
+
+  // ----- concurso de debates -----
+  debatesStore.$onAction(({ name, args, after }) => {
+    if (name === 'createContest') {
+      const [title, description, topics] = args as unknown as [string, string, string[]]
+      void push(() => api('/debates', { method: 'POST', body: { title, description, topics } }))
+    }
+    if (name === 'createTeam') {
+      const [contestId, , teamName] = args as unknown as [string, unknown, string]
+      after((result) => {
+        if (!result) return
+        void push(() => api('/debate-teams', { method: 'POST', body: { contestId, name: teamName } }))
+      })
+    }
+    if (name === 'joinTeam') {
+      const [teamId] = args as unknown as [string]
+      after((result) => {
+        if (!result) return
+        void push(() => api(`/debate-teams/${teamId}/join`, { method: 'POST' }))
+      })
+    }
+    if (name === 'leaveTeam') {
+      const [teamId, userId] = args as unknown as [string, string]
+      if (auth.user?.id !== userId) return
+      void push(() => api(`/debate-teams/${teamId}/leave`, { method: 'POST' }))
+    }
+    if (name === 'start') {
+      const [contestId] = args as unknown as [string]
+      after((result) => {
+        if ((result as number) > 0) void push(() => api(`/debates/${contestId}/start`, { method: 'POST' }))
+      })
+    }
+    if (name === 'drawRound') {
+      const [contestId] = args as unknown as [string]
+      after((result) => {
+        if ((result as number) > 0) void push(() => api(`/debates/${contestId}/draw`, { method: 'POST' }))
+      })
+    }
+    if (name === 'setResult') {
+      const [matchId, scoreA, scoreB] = args as unknown as [string, number, number]
+      void push(() => api(`/debate-matches/${matchId}/result`, { method: 'PATCH', body: { scoreA, scoreB } }))
+    }
+    if (name === 'finish') {
+      const [contestId] = args as unknown as [string]
+      void push(() => api(`/debates/${contestId}/finish`, { method: 'POST' }))
     }
   })
   // ANCHOR:sync-hooks
