@@ -27,6 +27,10 @@ import type { ArchiveDoc, Complaint, ComplaintStatus, Mentor, MentorshipRequest 
 import { useChallengesStore } from '@/stores/challenges'
 import { useDebatesStore } from '@/stores/debates'
 import type { Challenge, ChallengeSubmission, ChallengeTeam, DebateContest, DebateMatch, DebateTeam } from '@/types'
+// b25c-A-imports
+import { watch as vueWatch } from 'vue'
+import { useCompanyProfilesStore } from '@/stores/companyprofiles'
+import type { CompanyProfile } from '@/types'
 // ANCHOR:sync-imports
 import type {
   AppNotification,
@@ -126,6 +130,8 @@ function clearApiData() {
   useDebatesStore().contests = []
   useDebatesStore().teams = []
   useDebatesStore().matches = []
+  // b25c-B-clear
+  useCompanyProfilesStore().items = []
   // ANCHOR:sync-clear
 }
 
@@ -337,6 +343,8 @@ export function installApiSync() {
   // b25b-E-stores-hooks
   const challengesStore = useChallengesStore()
   const debatesStore = useDebatesStore()
+  // b25c-C-stores
+  const companyProfilesStore = useCompanyProfilesStore()
   // ANCHOR:sync-hooks-stores
 
   // ----- guardar automaticamente: perfil -----
@@ -791,6 +799,49 @@ export function installApiSync() {
       void push(() => api(`/debates/${contestId}/finish`, { method: 'POST' }))
     }
   })
+  // b25c-D-profile
+  // Perfil da empresa: carrega do servidor e so depois comeca a enviar alteracoes.
+  let profileLoaded = false
+  let profileTimer: ReturnType<typeof setTimeout> | undefined
+  vueWatch(
+    () => auth.user?.id,
+    async (id) => {
+      profileLoaded = false
+      if (!id || auth.user?.role !== 'company') return
+      try {
+        const d = await api<CompanyProfile>('/companies/me')
+        if (auth.user?.id !== id) return
+        companyProfilesStore.items = [d]
+        profileLoaded = true
+      } catch {
+        /* sem ligacao: nao envia nada para nao apagar dados */
+      }
+    },
+    { immediate: true },
+  )
+  vueWatch(
+    () => JSON.stringify(companyProfilesStore.items),
+    () => {
+      if (!profileLoaded || auth.user?.role !== 'company') return
+      clearTimeout(profileTimer)
+      profileTimer = setTimeout(() => {
+        const p = companyProfilesStore.items.find((x) => x.companyId === auth.user?.id)
+        if (!p) return
+        void push(() =>
+          api('/companies/me', {
+            method: 'PATCH',
+            body: {
+              description: p.description,
+              location: p.location,
+              areas: p.areas,
+              contactEmail: p.contactEmail,
+              contactPhone: p.contactPhone,
+            },
+          }),
+        )
+      }, 800)
+    },
+  )
   // ANCHOR:sync-hooks
 
   // ----- atualizacao periodica e ao voltar a janela -----

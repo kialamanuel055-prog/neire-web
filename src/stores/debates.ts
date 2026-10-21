@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { usePersistedRef } from '@/composables/usePersistedRef'
 import { useAuditStore } from '@/stores/audit'
 import { useNotificationsStore } from '@/stores/notifications'
-import { useCertificatesStore } from '@/stores/certificates'
 import { uid } from '@/utils/format'
 import type { DebateContest, DebateMatch, DebateTeam } from '@/types'
 
@@ -50,7 +49,6 @@ export const useDebatesStore = defineStore('debates', () => {
   const matches = usePersistedRef<DebateMatch[]>('neire.v1.debate-matches', () => [])
   const audit = useAuditStore()
   const notifications = useNotificationsStore()
-  const certificates = useCertificatesStore()
 
   function byId(id: string) {
     return contests.value.find((c) => c.id === id)
@@ -182,15 +180,8 @@ export const useDebatesStore = defineStore('debates', () => {
   function finish(contestId: string) {
     const c = byId(contestId)
     if (!c || c.status !== 'em_curso') return
-    const rank = ranking(contestId)
     c.status = 'terminado'
     audit.log('Concurso de debates terminado', c.title)
-    rank.forEach((row, i) => {
-      const label = i === 0 && row.played > 0 ? '1.º lugar' : 'participação'
-      for (const m of row.team.members) {
-        certificates.issue({ id: m.id, name: m.name }, `Concurso de Debates: ${c.title} (${label})`)
-      }
-    })
   }
 
   return {

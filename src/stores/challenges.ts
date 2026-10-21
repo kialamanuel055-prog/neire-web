@@ -4,7 +4,6 @@ import { usePersistedRef } from '@/composables/usePersistedRef'
 import { useAuditStore } from '@/stores/audit'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useProfilesStore } from '@/stores/profiles'
-import { useCertificatesStore } from '@/stores/certificates'
 import { isPast, uid } from '@/utils/format'
 import type { Challenge, ChallengeSubmission, ChallengeTeam } from '@/types'
 
@@ -34,7 +33,6 @@ export const useChallengesStore = defineStore('challenges', () => {
   const audit = useAuditStore()
   const notifications = useNotificationsStore()
   const profiles = useProfilesStore()
-  const certificates = useCertificatesStore()
 
   const active = computed(() => items.value.filter((c) => c.status === 'ativo'))
   const pending = computed(() => items.value.filter((c) => c.status === 'pendente'))
@@ -162,7 +160,7 @@ export const useChallengesStore = defineStore('challenges', () => {
     audit.log('Vencedor de desafio declarado', `${ch.title} → ${best.teamName}`)
     const t = teams.value.find((x) => x.id === best.teamId)
     for (const m of t?.members ?? []) {
-      certificates.issue({ id: m.id, name: m.name }, `Vencedor do desafio: ${ch.title}`)
+
       notifications.notify(m.id, 'Ganhaste o desafio!', `${best.teamName} venceu "${ch.title}".`, `/app/estudante/desafios/${ch.id}`)
     }
     return best
