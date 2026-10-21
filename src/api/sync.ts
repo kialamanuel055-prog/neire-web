@@ -14,6 +14,10 @@ import { useEventsStore } from '@/stores/events'
 import { useAcademyStore } from '@/stores/academy'
 import { useCertificatesStore } from '@/stores/certificates'
 import type { Certificate, Course, EventItem } from '@/types'
+// b24-imports
+import { useContentStore } from '@/stores/content'
+import { useFeedbackStore } from '@/stores/feedback'
+import type { FeedbackEntry, ImpactStory, NewsItem } from '@/types'
 // ANCHOR:sync-imports
 import type {
   AppNotification,
@@ -99,6 +103,8 @@ function clearApiData() {
   useEventsStore().items = []
   useAcademyStore().items = []
   useCertificatesStore().items = []
+  // b24-clear
+  useFeedbackStore().items = []
   // ANCHOR:sync-clear
 }
 
@@ -120,6 +126,9 @@ async function doPull() {
   const events = useEventsStore()
   const academy = useAcademyStore()
   const certs = useCertificatesStore()
+  // b24-pull-stores
+  const content = useContentStore()
+  const feedback = useFeedbackStore()
   // ANCHOR:sync-pull-stores
 
   const tasks: Promise<unknown>[] = [
@@ -246,6 +255,9 @@ export function installApiSync() {
   const events = useEventsStore()
   const academy = useAcademyStore()
   const certs = useCertificatesStore()
+  // b24-hooks-stores
+  const content = useContentStore()
+  const feedback = useFeedbackStore()
   // ANCHOR:sync-hooks-stores
 
   // ----- guardar automaticamente: perfil -----
